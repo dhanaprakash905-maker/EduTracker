@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduTracker - Assignment Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #F8FAFC; color: #0f172a; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select, textarea { font-family: inherit; }
+  ::selection { background: #e0e7ff; }
+
+  .app { display: flex; width: 100%; height: 100vh; overflow: hidden; }
+
+  .sidebar { background: #0f172a; display: flex; flex-direction: column; padding: 32px 0; gap: 32px; flex-shrink: 0; width: 80px; transition: width .3s ease; position: relative; z-index: 100; }
+  .sidebar.expanded { width: 256px; }
+  .sidebar-toggle { position: absolute; right: -12px; top: 112px; width: 24px; height: 24px; background: #4f46e5; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,.2); z-index: 110; }
+  .sidebar-toggle:hover { background: #4338ca; }
+  .sidebar-brand { display: flex; align-items: center; gap: 16px; padding: 0 24px; }
+  .sidebar:not(.expanded) .sidebar-brand { padding: 0; justify-content: center; }
+  .brand-icon { width: 48px; height: 48px; background: #4f46e5; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; box-shadow: 0 10px 25px rgba(67,56,202,.2); }
+  .brand-text { color: #fff; font-weight: 700; font-size: 18px; }
+  .sidebar:not(.expanded) .brand-text { display: none; }
+  .nav-list { display: flex; flex-direction: column; gap: 16px; padding: 0 16px; }
+  .sidebar:not(.expanded) .nav-list { padding: 0; align-items: center; }
+  .nav-btn { display: flex; align-items: center; gap: 16px; width: 100%; height: 56px; padding: 0 16px; border-radius: 12px; color: #64748b; font-weight: 700; font-size: 14px; transition: all .2s; }
+  .sidebar:not(.expanded) .nav-btn { width: 48px; height: 48px; padding: 0; justify-content: center; border-radius: 16px; }
+  .nav-btn:hover { background: #1e293b; color: #cbd5e1; }
+  .nav-btn.active { background: #4f46e5; color: #fff; box-shadow: 0 10px 20px rgba(79,70,229,.2); }
+  .nav-btn .label { white-space: nowrap; }
+  .sidebar:not(.expanded) .nav-btn .label { display: none; }
+
+  .main-area { flex: 1; overflow: hidden; position: relative; }
+  .view { width: 100%; height: 100%; overflow-y: auto; }
+
+  .page-header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 24px 32px; }
+  .page-header h2 { margin: 0; font-size: 24px; font-weight: 700; color: #0f172a; }
+  .page-header .subtitle { margin: 4px 0 0; font-size: 14px; color: #64748b; }
+
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: #4f46e5; color: #fff; padding: 10px 20px; border-radius: 12px; font-size: 14px; font-weight: 700; box-shadow: 0 10px 20px rgba(79,70,229,.2); transition: all .2s; }
+  .btn-primary:hover { background: #4338ca; }
+  .btn-primary:active { transform: scale(.95); }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e2e8f0; color: #475569; padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 700; transition: all .2s; }
+  .btn-secondary:hover { background: #f8fafc; }
+  .btn-secondary.active { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+  .stat-card { border: 1px solid; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .stat-icon { padding: 10px; border-radius: 12px; color: #fff; display: flex; }
+  .stat-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .15em; margin: 0; }
+  .stat-value { font-size: 20px; font-weight: 900; margin: 2px 0 0; }
+  .stat-blue { background: #eff6ff; border-color: #dbeafe; }
+  .stat-blue .stat-icon { background: #3b82f6; }
+  .stat-blue .stat-label { color: #2563eb; }
+  .stat-blue .stat-value { color: #1e3a8a; }
+  .stat-emerald { background: #ecfdf5; border-color: #d1fae5; }
+  .stat-emerald .stat-icon { background: #10b981; }
+  .stat-emerald .stat-label { color: #059669; }
+  .stat-emerald .stat-value { color: #064e3b; }
+  .stat-amber { background: #fffbeb; border-color: #fef3c7; }
+  .stat-amber .stat-icon { background: #f59e0b; }
+  .stat-amber .stat-label { color: #d97706; }
+  .stat-amber .stat-value { color: #78350f; }
+  .stat-rose { background: #fff1f2; border-color: #ffe4e6; }
+  .stat-rose .stat-icon { background: #f43f5e; }
+  .stat-rose .stat-label { color: #e11d48; }
+  .stat-rose .stat-value { color: #881337; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; align-items: center; }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+  .search-wrap input { width: 100%; padding: 10px 14px 10px 38px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; outline: none; transition: all .2s; }
+  .search-wrap input:focus { background: #fff; border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,.1); }
+  .filter-select { padding: 10px 16px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; outline: none; }
+  .filter-select:hover { background: #f8fafc; }
+
+  .dashboard { display: flex; height: 100%; overflow: hidden; background: rgba(248,250,252,.3); }
+  .aside { width: 320px; background: #fff; border-right: 1px solid #e2e8f0; flex-shrink: 0; overflow-y: auto; padding: 24px; }
+  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .scroll-area { flex: 1; overflow-y: auto; padding: 32px; }
+
+  .mini-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .mini-cal-title { font-weight: 700; color: #334155; font-size: 14px; margin: 0; }
+  .icon-btn { padding: 6px; border-radius: 8px; color: #64748b; transition: background .2s; display: inline-flex; }
+  .icon-btn:hover { background: #f1f5f9; }
+  .mini-cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 8px; }
+  .mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .mini-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; border-radius: 8px; color: #475569; transition: background .2s; position: relative; }
+  .mini-day:hover { background: #eef2ff; }
+  .mini-day.other { color: #e2e8f0; cursor: default; }
+  .mini-day.other:hover { background: transparent; }
+  .mini-day.today { color: #4f46e5; border: 1px solid #c7d2fe; }
+  .mini-day.selected { background: #4f46e5; color: #fff; font-weight: 700; box-shadow: 0 4px 8px rgba(0,0,0,.1); }
+  .mini-day .dot { position: absolute; bottom: 4px; width: 4px; height: 4px; background: #fbbf24; border-radius: 50%; }
+  .mini-day.selected .dot { background: #fff; }
+
+  .due-section { margin-top: 28px; }
+  .due-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 16px; }
+  .due-header h3 { margin: 0; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .15em; }
+  .pill { font-size: 10px; font-weight: 700; background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 999px; }
+  .due-list { display: flex; flex-direction: column; gap: 12px; }
+  .due-item { padding: 16px; background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; cursor: pointer; transition: border-color .2s; }
+  .due-item:hover { border-color: #c7d2fe; }
+  .due-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .due-task { font-size: 14px; font-weight: 600; color: #1e293b; line-height: 1.3; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .empty-state { padding: 32px 16px; text-align: center; background: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 16px; font-size: 12px; color: #94a3b8; font-weight: 500; }
+
+  .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; padding: 4px 10px; border-radius: 8px; border: 1px solid; display: inline-block; }
+  .badge-small { font-size: 8px; padding: 2px 6px; }
+  .prio-Urgent, .prio-High { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+  .prio-Medium { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+  .prio-Low, .prio-VeryLow { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+  .prio-default { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+  .course-tag { font-size: 10px; font-weight: 900; color: #6366f1; }
+
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; transition: all .2s; display: flex; flex-direction: column; }
+  .card:hover { box-shadow: 0 20px 40px rgba(79,70,229,.05); }
+  .card-top { display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px; }
+  .card-actions { display: flex; gap: 4px; }
+  .icon-action { padding: 6px; color: #94a3b8; border-radius: 8px; transition: all .2s; display: inline-flex; }
+  .icon-action:hover { background: #eef2ff; color: #4f46e5; }
+  .icon-action.danger:hover { background: #fff1f2; color: #e11d48; }
+  .card h3 { margin: 0 0 8px; font-size: 16px; font-weight: 700; color: #1e293b; line-height: 1.4; }
+  .card-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 16px; }
+  .card-meta > div { display: flex; align-items: center; gap: 6px; }
+  .card-notes { background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #f1f5f9; margin-bottom: 16px; font-size: 11px; color: #64748b; font-style: italic; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+  .status-display { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #475569; }
+
+  .status-complete { color: #10b981; }
+  .status-progress { color: #f59e0b; }
+  .status-default { color: #cbd5e1; }
+
+  .setup { background: #f8fafc; padding: 32px; min-height: 100%; }
+  .setup-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+  .setup-header-icon { background: #4f46e5; padding: 8px; border-radius: 8px; color: #fff; display: flex; box-shadow: 0 10px 20px rgba(0,0,0,.1); }
+  .setup-header h1 { margin: 0; font-size: 24px; font-weight: 700; color: #1e293b; }
+  .setup-header p { margin: 2px 0 0; font-size: 14px; color: #64748b; }
+  .setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
+  .setup-col { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .setup-col-header { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px; }
+  .setup-col-header h2 { margin: 0; font-size: 14px; font-weight: 600; color: #334155; }
+  .col-emerald { background: #ecfdf5; } .col-emerald svg { color: #059669; }
+  .col-orange { background: #fff7ed; } .col-orange svg { color: #ea580c; }
+  .col-blue { background: #eff6ff; } .col-blue svg { color: #2563eb; }
+  .col-purple { background: #faf5ff; } .col-purple svg { color: #9333ea; }
+  .setup-add { padding: 12px; border-bottom: 1px solid #f8fafc; background: rgba(248,250,252,.3); display: flex; gap: 8px; }
+  .setup-add input { flex: 1; font-size: 14px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; outline: none; background: #fff; }
+  .setup-add input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,.1); }
+  .setup-add button { padding: 8px; background: #4f46e5; color: #fff; border-radius: 8px; display: flex; }
+  .setup-add button:disabled { opacity: .5; cursor: not-allowed; }
+  .setup-items { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .setup-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-radius: 8px; border: 1px solid transparent; transition: all .2s; }
+  .setup-item:hover { background: #f8fafc; border-color: #e2e8f0; }
+  .setup-item .val { font-size: 14px; font-weight: 500; color: #475569; padding-left: 8px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .setup-item .actions { display: flex; gap: 4px; opacity: 0; transition: opacity .2s; }
+  .setup-item:hover .actions { opacity: 1; }
+  .setup-item input { flex: 1; font-size: 14px; background: #fff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 4px 8px; outline: none; }
+
+  .cal-view { background: #f8fafc; min-height: 100%; }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 32px; background: #fff; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 30; flex-wrap: wrap; gap: 16px; }
+  .cal-header-left { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .cal-title { display: flex; align-items: center; gap: 8px; }
+  .cal-title h1 { margin: 0; font-size: 20px; font-weight: 700; color: #0f172a; }
+  .cal-title svg { color: #4f46e5; }
+  .month-nav { display: flex; align-items: center; background: #f1f5f9; border-radius: 8px; padding: 4px; }
+  .month-nav button { padding: 6px; border-radius: 6px; color: #475569; display: flex; }
+  .month-nav button:hover { background: #fff; }
+  .month-name { padding: 0 16px; font-weight: 600; color: #334155; min-width: 160px; text-align: center; text-transform: uppercase; letter-spacing: .05em; font-size: 12px; }
+  .cal-body { padding: 32px; }
+  .cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border: 1px solid #e2e8f0; border-bottom: none; border-radius: 16px 16px 0 0; overflow: hidden; }
+  .cal-dow div { padding: 16px; text-align: center; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .15em; color: #94a3b8; border-right: 1px solid #f1f5f9; }
+  .cal-dow div:last-child { border-right: none; }
+  .cal-dow .weekend { background: rgba(248,250,252,.5); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border: 1px solid #e2e8f0; border-radius: 0 0 16px 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .cal-cell { display: flex; flex-direction: column; padding: 8px; min-height: 140px; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
+  .cal-cell.weekend.current { background: rgba(248,250,252,.2); }
+  .cal-cell.other { background: rgba(248,250,252,.5); }
+  .cal-day-num { font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+  .cal-cell.other .cal-day-num { color: #cbd5e1; }
+  .cal-day-num.today { background: #4f46e5; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,.1); }
+  .cal-events { display: flex; flex-direction: column; gap: 4px; }
+  .cal-event { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; border: 1px solid; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .cal-event:active { transform: scale(.95); }
+  .cal-event .ev-text { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .cal-more { font-size: 10px; font-weight: 900; color: #4f46e5; padding: 4px 8px; background: rgba(238,242,255,.5); border: 1px solid #e0e7ff; border-radius: 4px; }
+  .cal-more:hover { background: #e0e7ff; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.6); backdrop-filter: blur(4px); z-index: 120; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal { background: #fff; border-radius: 24px; box-shadow: 0 25px 50px rgba(0,0,0,.25); width: 100%; max-width: 512px; overflow: hidden; animation: zoomIn .2s ease; }
+  @keyframes zoomIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-header { padding: 20px 32px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; background: rgba(248,250,252,.5); }
+  .modal-header h2 { margin: 0; font-size: 20px; font-weight: 700; color: #0f172a; }
+  .modal-close { padding: 8px; border-radius: 12px; color: #94a3b8; transition: all .2s; display: flex; }
+  .modal-close:hover { background: #e2e8f0; }
+  .form { padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .form-label { display: block; font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: .15em; margin: 0 0 8px 4px; }
+  .form-input { width: 100%; padding: 10px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-weight: 500; outline: none; transition: all .2s; }
+  .form-input:focus { background: #fff; border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,.1); }
+  textarea.form-input { min-height: 80px; resize: vertical; font-family: inherit; }
+  .form-actions { display: flex; gap: 16px; padding-top: 16px; }
+  .form-actions button { flex: 1; padding: 12px 24px; border-radius: 16px; font-size: 14px; font-weight: 700; transition: all .2s; }
+  .btn-cancel { border: 1px solid #e2e8f0; color: #64748b; background: #fff; }
+  .btn-cancel:hover { background: #f8fafc; }
+  .btn-save { background: #4f46e5; color: #fff; box-shadow: 0 10px 20px rgba(79,70,229,.2); }
+  .btn-save:hover { background: #4338ca; }
+  .btn-save:active { transform: scale(.95); }
+
+  .more-modal { max-width: 380px; max-height: 80vh; display: flex; flex-direction: column; }
+  .more-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .more-event { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 12px; border-radius: 12px; border: 1px solid; text-align: left; transition: all .2s; gap: 12px; }
+  .more-event:hover { box-shadow: 0 10px 20px rgba(0,0,0,.1); }
+  .more-event .left { display: flex; align-items: center; gap: 12px; }
+  .more-event .icon-bubble { background: rgba(255,255,255,.8); padding: 4px; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.05); display: flex; }
+  .more-event .task { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+  .more-event .course { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+
+  .data-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 64px; }
+    .sidebar.expanded { width: 200px; }
+    body, html { overflow: auto; }
+    .app { height: auto; min-height: 100vh; overflow: visible; }
+    .main-area { overflow: visible; }
+    .view { height: auto; overflow: visible; }
+    .dashboard { flex-direction: column; height: auto; overflow: visible; }
+    .aside { width: 100%; max-height: none; border-right: none; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; overflow: visible; }
+    .main-content { flex: none; overflow: visible; }
+    .scroll-area { overflow: visible; padding: 16px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .form-row { grid-template-columns: 1fr; }
+    .page-header, .scroll-area, .setup, .cal-body { padding: 16px; }
+    .cal-cell { min-height: 80px; padding: 4px; }
+    .cal-event .ev-text { display: none; }
+    .cal-event { padding: 4px; justify-content: center; }
+    .cards-grid { grid-template-columns: 1fr; }
+  }
+
+  @media print {
+    body, html { overflow: visible; height: auto; background: #fff; }
+    .sidebar, .sidebar-toggle, .filters, .data-toolbar,
+    .card-actions, .setup-add, .setup-item .actions, .modal-overlay,
+    .month-nav, .icon-btn, .due-section, .aside { display: none !important; }
+    .app, .main-area, .view, .dashboard, .main-content, .scroll-area,
+    .cal-view, .setup { display: block !important; overflow: visible !important; height: auto !important; padding: 12px !important; }
+    .page-header, .cal-header { position: static !important; box-shadow: none !important; border: none !important; padding: 8px 0 !important; }
+    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #cbd5e1 !important; page-break-inside: avoid; }
+    .cards-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .stats { display: none; }
+    .cal-cell { min-height: 100px; }
+    .cal-grid, .cal-dow { border-color: #94a3b8 !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app" class="app"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+    <symbol id="i-grad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+    <symbol id="i-cal-days" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-chev-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20v-12M22 20V4"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></symbol>
+    <symbol id="i-arrow-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+  </defs>
+</svg>
+
+<script>
+const STORAGE_KEY = 'edutracker.v1';
+
+const DEFAULT_STATE = {
+  assignments: [],
+  config: {
+    status: ['Not Started', 'In Progress', 'Complete'],
+    priority: ['Urgent', 'High', 'Medium', 'Low', 'Very Low'],
+    courses: ['Maths', 'Biology', 'Physics', 'Geography', 'History'],
+    grades: ['A', 'B', 'C', 'D', 'F']
+  },
+  ui: { activeTab: 'dashboard', mondayStart: false, navExpanded: false, hideCompleted: false }
+};
+
+let state = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    const parsed = JSON.parse(raw);
+    return {
+      assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [],
+      config: Object.assign({}, DEFAULT_STATE.config, parsed.config || {}),
+      ui: Object.assign({}, DEFAULT_STATE.ui, parsed.ui || {})
+    };
+  } catch (e) {
+    console.error('Failed to load state', e);
+    return JSON.parse(JSON.stringify(DEFAULT_STATE));
+  }
+}
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+function parseDate(val) {
+  if (!val) return null;
+  const parts = String(val).split('-');
+  if (parts.length === 3) {
+    const d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+    return isNaN(d) ? null : d;
+  }
+  const d = new Date(val);
+  return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function isSameDay(a, b) {
+  return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function fmtDate(d, opts) { return d ? d.toLocaleDateString('en-US', opts) : ''; }
+function icon(id, attrs) { return '<svg ' + (attrs || '') + '><use href="#i-' + id + '"/></svg>'; }
+
+function prioClass(p) {
+  const cls = { 'Urgent':'prio-Urgent','High':'prio-High','Medium':'prio-Medium','Low':'prio-Low','Very Low':'prio-VeryLow' };
+  return cls[p] || 'prio-default';
+}
+function statusIcon(status) {
+  const s = (status || '').toLowerCase();
+  if (s === 'complete') return icon('check-circle', 'width="16" height="16" class="status-complete"');
+  if (s === 'in progress') return icon('clock', 'width="16" height="16" class="status-progress"');
+  return icon('circle', 'width="16" height="16" class="status-default"');
+}
+
+const ui = {
+  selectedDate: new Date(),
+  viewDate: new Date(),
+  search: '',
+  filterCourse: 'All',
+  filterStatus: 'All',
+  isAdding: false,
+  editingId: null,
+  editingConfig: null,
+  newConfigValues: { status:'', priority:'', courses:'', grades:'' },
+  activeMoreDate: null
+};
+
+function upsertAssignment(data) {
+  if (data.id) {
+    const idx = state.assignments.findIndex(a => a.id === data.id);
+    if (idx >= 0) state.assignments[idx] = Object.assign({}, state.assignments[idx], data);
+    else state.assignments.push(Object.assign({}, data));
+  } else {
+    state.assignments.push(Object.assign({}, data, { id: uid() }));
+  }
+  save();
+}
+function deleteAssignment(id) {
+  state.assignments = state.assignments.filter(a => a.id !== id);
+  save();
+}
+function addConfig(key, val) {
+  val = (val || '').trim();
+  if (!val) return;
+  state.config[key] = state.config[key] || [];
+  if (!state.config[key].includes(val)) state.config[key].push(val);
+  save();
+}
+function updateConfig(key, idx, val) {
+  val = (val || '').trim();
+  if (!val) return;
+  state.config[key][idx] = val;
+  save();
+}
+function deleteConfig(key, idx) {
+  state.config[key].splice(idx, 1);
+  save();
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'edutracker-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed || typeof parsed !== 'object') throw new Error('Invalid file');
+      state = {
+        assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [],
+        config: Object.assign({}, DEFAULT_STATE.config, parsed.config || {}),
+        ui: Object.assign({}, DEFAULT_STATE.ui, parsed.ui || {})
+      };
+      state.assignments.forEach(a => { if (!a.id) a.id = uid(); });
+      save(); render();
+    } catch (err) {
+      alert('Failed to import: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function render() {
+  const root = document.getElementById('app');
+  let body = '';
+  if (state.ui.activeTab === 'setup') body = renderSetup();
+  else if (state.ui.activeTab === 'calendar') body = renderCalendar();
+  else body = renderDashboard();
+  const modal = (ui.isAdding || ui.editingId) ? renderModal() : '';
+  const moreModal = ui.activeMoreDate ? renderMoreModal() : '';
+  root.innerHTML = renderSidebar() + '<main class="main-area">' + body + modal + moreModal + '</main>';
+  bindEvents();
+}
+
+function renderSidebar() {
+  const exp = state.ui.navExpanded;
+  const tabs = [
+    { id:'setup',     iconId:'settings',  label:'Setup' },
+    { id:'dashboard', iconId:'dashboard', label:'Dashboard' },
+    { id:'calendar',  iconId:'calendar',  label:'Calendar' }
+  ];
+  return '<nav class="sidebar ' + (exp ? 'expanded':'') + '">' +
+    '<button class="sidebar-toggle" data-act="toggle-nav" aria-label="Toggle nav">' +
+      icon(exp ? 'chev-l':'chev-r', 'width="16" height="16"') + '</button>' +
+    '<div class="sidebar-brand">' +
+      '<div class="brand-icon">' + icon('grad', 'width="28" height="28"') + '</div>' +
+      '<span class="brand-text">EduTracker</span>' +
+    '</div>' +
+    '<div class="nav-list">' +
+      tabs.map(t => '<button class="nav-btn ' + (state.ui.activeTab === t.id ? 'active':'') +
+        '" data-act="tab" data-tab="' + t.id + '" title="' + t.label + '">' +
+        icon(t.iconId, 'width="24" height="24"') +
+        '<span class="label">' + t.label + '</span></button>').join('') +
+    '</div></nav>';
+}
+
+function computeStats() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const total = state.assignments.length;
+  let completed = 0, dueToday = 0, overdue = 0;
+  state.assignments.forEach(a => {
+    const d = parseDate(a.date);
+    const done = (a.status || '').toLowerCase() === 'complete';
+    if (done) completed++;
+    if (d && isSameDay(d, today)) dueToday++;
+    if (d && d < today && !done) overdue++;
+  });
+  return { total, completed, dueToday, overdue };
+}
+
+function statCard(label, value, iconId, color) {
+  return '<div class="stat-card stat-' + color + '">' +
+    '<div class="stat-icon">' + icon(iconId, 'width="16" height="16"') + '</div>' +
+    '<div><p class="stat-label">' + label + '</p>' +
+    '<p class="stat-value">' + value + '</p></div></div>';
+}
+
+function renderCard(a) {
+  return '<div class="card">' +
+    '<div class="card-top">' +
+      '<span class="badge ' + prioClass(a.priority) + '">' + escapeHtml(a.priority || '—') + '</span>' +
+      '<div class="card-actions">' +
+        '<button class="icon-action" data-act="edit" data-id="' + a.id + '" aria-label="Edit">' +
+          icon('edit', 'width="16" height="16"') + '</button>' +
+        '<button class="icon-action danger" data-act="delete" data-id="' + a.id + '" aria-label="Delete">' +
+          icon('trash', 'width="16" height="16"') + '</button>' +
+      '</div></div>' +
+    '<h3>' + escapeHtml(a.task) + '</h3>' +
+    '<div class="card-meta">' +
+      '<div>' + icon('book','width="14" height="14"') + ' ' + escapeHtml(a.course || '—') + '</div>' +
+      '<div>' + icon('cal-days','width="14" height="14"') + ' ' + escapeHtml(a.date || '—') + '</div>' +
+    '</div>' +
+    (a.notes ? '<div class="card-notes">' + escapeHtml(a.notes) + '</div>' : '') +
+    '<div class="card-footer"><div class="status-display">' + statusIcon(a.status) +
+      '<span>' + escapeHtml(a.status || '—') + '</span></div></div>' +
+    '</div>';
+}
+
+function renderMiniCal() {
+  const sd = ui.selectedDate;
+  const year = sd.getFullYear(), month = sd.getMonth();
+  const firstRaw = new Date(year, month, 1).getDay();
+  const firstDay = state.ui.mondayStart ? (firstRaw === 0 ? 6 : firstRaw - 1) : firstRaw;
+  const dows = state.ui.mondayStart
+    ? ['Mo','Tu','We','Th','Fr','Sa','Su']
+    : ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const today = new Date();
+  let cells = '';
+  for (let i = 0; i < 42; i++) {
+    const dayNum = i - firstDay + 1;
+    const d = new Date(year, month, dayNum);
+    const isCurrent = d.getMonth() === month;
+    const isToday = isSameDay(d, today);
+    const isSelected = isSameDay(d, sd);
+    const hasTask = state.assignments.some(a => isSameDay(parseDate(a.date), d));
+    const classes = ['mini-day'];
+    if (!isCurrent) classes.push('other');
+    if (isToday && !isSelected) classes.push('today');
+    if (isSelected) classes.push('selected');
+    cells += '<button class="' + classes.join(' ') + '"' +
+      (isCurrent ? ' data-act="select-day" data-date="' + d.toISOString() + '"' : '') + '>' +
+      d.getDate() + (hasTask && isCurrent && !isSelected ? '<span class="dot"></span>' : '') + '</button>';
+  }
+  return '<div class="mini-cal-header">' +
+    '<h2 class="mini-cal-title">' + fmtDate(sd, { month:'long', year:'numeric' }) + '</h2>' +
+    '<div style="display:flex;gap:4px">' +
+      '<button class="icon-btn" data-act="mini-prev">' + icon('chev-l','width="16" height="16"') + '</button>' +
+      '<button class="icon-btn" data-act="mini-next">' + icon('chev-r','width="16" height="16"') + '</button>' +
+    '</div></div>' +
+    '<div class="mini-cal-dow">' + dows.map(d => '<div>' + d + '</div>').join('') + '</div>' +
+    '<div class="mini-cal-grid">' + cells + '</div>';
+}
+
+function renderDashboard() {
+  const stats = computeStats();
+  const filtered = state.assignments
+    .filter(a => {
+      const matchesSearch = (a.task || '').toLowerCase().includes(ui.search.toLowerCase());
+      const matchesCourse = ui.filterCourse === 'All' || a.course === ui.filterCourse;
+      const matchesStatus = ui.filterStatus === 'All' || a.status === ui.filterStatus;
+      const done = (a.status || '').toLowerCase() === 'complete';
+      return matchesSearch && matchesCourse && matchesStatus && (!state.ui.hideCompleted || !done);
+    })
+    .sort((a,b) => ((parseDate(a.date) && parseDate(a.date).getTime()) || Infinity) -
+                   ((parseDate(b.date) && parseDate(b.date).getTime()) || Infinity));
+
+  const daily = state.assignments.filter(a => {
+    const d = parseDate(a.date);
+    return d && isSameDay(d, ui.selectedDate);
+  });
+
+  const dailyHtml = daily.length ? daily.map(a =>
+    '<div class="due-item" data-act="edit" data-id="' + a.id + '">' +
+      '<div class="due-meta">' +
+        '<span class="badge badge-small ' + prioClass(a.priority) + '">' + escapeHtml(a.priority) + '</span>' +
+        '<span class="course-tag">' + escapeHtml(a.course) + '</span>' +
+        '<div style="margin-left:auto">' + statusIcon(a.status) + '</div>' +
+      '</div>' +
+      '<p class="due-task">' + escapeHtml(a.task) + '</p>' +
+    '</div>').join('')
+    : '<div class="empty-state">No deadlines scheduled</div>';
+
+  const courseOptions = state.config.courses.map(c =>
+    '<option value="' + escapeHtml(c) + '"' + (ui.filterCourse === c ? ' selected':'') + '>' + escapeHtml(c) + '</option>').join('');
+  const statusOptions = state.config.status.map(s =>
+    '<option value="' + escapeHtml(s) + '"' + (ui.filterStatus === s ? ' selected':'') + '>' + escapeHtml(s) + '</option>').join('');
+
+  return '<div class="view"><div class="dashboard">' +
+    '<aside class="aside">' +
+      renderMiniCal() +
+      '<div class="due-section">' +
+        '<div class="due-header">' +
+          '<h3>Due: ' + fmtDate(ui.selectedDate, { day:'numeric', month:'short' }) + '</h3>' +
+          '<span class="pill">' + daily.length + '</span>' +
+        '</div>' +
+        '<div class="due-list">' + dailyHtml + '</div>' +
+      '</div>' +
+    '</aside>' +
+    '<div class="main-content">' +
+      '<header class="page-header">' +
+        '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px">' +
+          '<div><h2>Academic Overview</h2><p class="subtitle">Manage your active workload</p></div>' +
+          '<div class="data-toolbar">' +
+            '<button class="btn-secondary" data-act="print" title="Print">' + icon('print','width="16" height="16"') + ' Print</button>' +
+            '<button class="btn-secondary" data-act="export" title="Export JSON">' + icon('download','width="16" height="16"') + ' Export</button>' +
+            '<label class="btn-secondary" title="Import JSON" style="cursor:pointer">' + icon('upload','width="16" height="16"') + ' Import' +
+              '<input type="file" accept="application/json" data-act="import" style="display:none"></label>' +
+            '<button class="btn-primary" data-act="add">' + icon('plus','width="16" height="16"') + ' Add Assignment</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="stats">' +
+          statCard('Total', stats.total, 'clipboard', 'blue') +
+          statCard('Done', stats.completed, 'check-circle', 'emerald') +
+          statCard('Today', stats.dueToday, 'activity', 'amber') +
+          statCard('Overdue', stats.overdue, 'alert', 'rose') +
+        '</div>' +
+        '<div class="filters">' +
+          '<div class="search-wrap">' + icon('search','width="16" height="16"') +
+            '<input type="text" placeholder="Search assignments" value="' + escapeHtml(ui.search) + '" data-act="search"></div>' +
+          '<select class="filter-select" data-act="filter-course"><option value="All">All Courses</option>' + courseOptions + '</select>' +
+          '<select class="filter-select" data-act="filter-status"><option value="All">All Statuses</option>' + statusOptions + '</select>' +
+          '<button class="btn-secondary ' + (state.ui.hideCompleted ? 'active':'') + '" data-act="toggle-hide">' +
+            icon(state.ui.hideCompleted ? 'eye-off':'eye','width="16" height="16"') + ' ' +
+            (state.ui.hideCompleted ? 'Active' : 'All') + '</button>' +
+        '</div>' +
+      '</header>' +
+      '<div class="scroll-area">' +
+        (filtered.length ? '<div class="cards-grid">' + filtered.map(renderCard).join('') + '</div>'
+          : '<div class="empty-state">No assignments match your filters</div>') +
+      '</div>' +
+    '</div></div></div>';
+}
+
+function renderSetup() {
+  const cols = [
+    { key:'status',   name:'Status',   iconId:'activity', color:'col-emerald' },
+    { key:'priority', name:'Priority', iconId:'signal',   color:'col-orange'  },
+    { key:'courses',  name:'Courses',  iconId:'book',     color:'col-blue'    },
+    { key:'grades',   name:'Grades',   iconId:'grad',     color:'col-purple'  }
+  ];
+  const colsHtml = cols.map(col => {
+    const items = state.config[col.key] || [];
+    const newVal = ui.newConfigValues[col.key] || '';
+    const itemsHtml = items.length === 0
+      ? '<div style="padding:32px;text-align:center;color:#94a3b8;font-size:12px">No entries yet</div>'
+      : items.map((val, idx) => {
+          const isEditing = ui.editingConfig && ui.editingConfig.key === col.key && ui.editingConfig.idx === idx;
+          if (isEditing) {
+            return '<div class="setup-item" style="background:#eef2ff;border-color:#c7d2fe">' +
+              '<input type="text" value="' + escapeHtml(ui.editingConfig.value) + '" data-act="config-edit-input">' +
+              '<button class="icon-action" data-act="config-save" style="color:#10b981">' + icon('check','width="16" height="16"') + '</button>' +
+              '<button class="icon-action" data-act="config-cancel">' + icon('x','width="16" height="16"') + '</button>' +
+              '</div>';
+          }
+          return '<div class="setup-item">' +
+            '<span class="val">' + escapeHtml(val) + '</span>' +
+            '<div class="actions">' +
+              '<button class="icon-action" data-act="config-start-edit" data-key="' + col.key + '" data-idx="' + idx + '">' + icon('edit','width="14" height="14"') + '</button>' +
+              '<button class="icon-action danger" data-act="config-delete" data-key="' + col.key + '" data-idx="' + idx + '">' + icon('trash','width="14" height="14"') + '</button>' +
+            '</div></div>';
+        }).join('');
+    return '<div class="setup-col">' +
+      '<div class="setup-col-header ' + col.color + '">' + icon(col.iconId,'width="16" height="16"') + '<h2>' + col.name + '</h2></div>' +
+      '<div class="setup-add">' +
+        '<input type="text" placeholder="New ' + col.name + '..." value="' + escapeHtml(newVal) + '" data-act="config-new" data-key="' + col.key + '">' +
+        '<button data-act="config-add" data-key="' + col.key + '"' + (!newVal.trim() ? ' disabled' : '') + '>' + icon('plus','width="16" height="16"') + '</button>' +
+      '</div>' +
+      '<div class="setup-items">' + itemsHtml + '</div>' +
+    '</div>';
+  }).join('');
+  return '<div class="view"><div class="setup">' +
+    '<header class="setup-header">' +
+      '<div class="setup-header-icon">' + icon('settings','width="24" height="24"') + '</div>' +
+      '<div><h1>Workspace Setup</h1><p>Configure your assignment attributes</p></div>' +
+    '</header>' +
+    '<div class="setup-grid">' + colsHtml + '</div>' +
+  '</div></div>';
+}
+
+function renderCalendar() {
+  const year = ui.viewDate.getFullYear(), month = ui.viewDate.getMonth();
+  const firstRaw = new Date(year, month, 1).getDay();
+  const firstDay = state.ui.mondayStart ? (firstRaw === 0 ? 6 : firstRaw - 1) : firstRaw;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const prevLast = new Date(year, month, 0).getDate();
+  const grid = [];
+  for (let i = firstDay - 1; i >= 0; i--) grid.push({ date:new Date(year, month-1, prevLast - i), current:false });
+  for (let i = 1; i <= lastDay; i++) grid.push({ date:new Date(year, month, i), current:true });
+  let nextDay = 1;
+  while (grid.length < 42) { grid.push({ date:new Date(year, month+1, nextDay++), current:false }); }
+
+  const byDate = {};
+  state.assignments.forEach(a => {
+    const done = (a.status || '').toLowerCase() === 'complete';
+    if (state.ui.hideCompleted && done) return;
+    const d = parseDate(a.date); if (!d) return;
+    const k = d.toDateString();
+    (byDate[k] = byDate[k] || []).push(a);
+  });
+
+  const dows = state.ui.mondayStart
+    ? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const today = new Date();
+
+  const gridHtml = grid.map(g => {
+    const date = g.date, current = g.current;
+    const k = date.toDateString();
+    const items = byDate[k] || [];
+    const isToday = isSameDay(date, today);
+    const showMore = items.length > 3;
+    const visible = showMore ? items.slice(0, 2) : items.slice(0, 3);
+    const dow = date.getDay();
+    const weekend = (dow === 0 || dow === 6) && current;
+    const visibleHtml = visible.map(a =>
+      '<button class="cal-event ' + prioClass(a.priority) + '" data-act="edit" data-id="' + a.id + '" title="' + escapeHtml(a.task) + '">' +
+        statusIcon(a.status) + '<span class="ev-text">' + escapeHtml(a.task) + '</span>' +
+      '</button>').join('');
+    const moreHtml = showMore ? '<button class="cal-more" data-act="more" data-date="' + date.toISOString() + '">' + (items.length - 2) + ' more</button>' : '';
+    return '<div class="cal-cell ' + (!current ? 'other' : '') + ' ' + (weekend ? 'weekend current' : '') + '">' +
+      '<div><span class="cal-day-num ' + (isToday ? 'today' : '') + '">' + date.getDate() + '</span></div>' +
+      '<div class="cal-events">' + visibleHtml + moreHtml + '</div>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="view"><div class="cal-view">' +
+    '<header class="cal-header">' +
+      '<div class="cal-header-left">' +
+        '<div class="cal-title">' + icon('calendar','width="24" height="24"') + '<h1>Academic Calendar</h1></div>' +
+        '<div class="month-nav">' +
+          '<button data-act="cal-prev">' + icon('chev-l','width="20" height="20"') + '</button>' +
+          '<div class="month-name">' + fmtDate(ui.viewDate, { month:'long', year:'numeric' }) + '</div>' +
+          '<button data-act="cal-next">' + icon('chev-r','width="20" height="20"') + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button class="btn-secondary ' + (state.ui.mondayStart ? 'active':'') + '" data-act="toggle-monday">' +
+          icon('cal-days','width="16" height="16"') + ' ' + (state.ui.mondayStart ? 'Monday Start' : 'Sunday Start') + '</button>' +
+        '<button class="btn-secondary ' + (state.ui.hideCompleted ? 'active':'') + '" data-act="toggle-hide">' +
+          icon(state.ui.hideCompleted ? 'eye-off':'eye','width="16" height="16"') + ' ' +
+          (state.ui.hideCompleted ? 'Active Only' : 'Show All') + '</button>' +
+        '<button class="btn-secondary" data-act="print">' + icon('print','width="16" height="16"') + ' Print</button>' +
+      '</div>' +
+    '</header>' +
+    '<main class="cal-body">' +
+      '<div class="cal-dow">' + dows.map((d,i) => '<div class="' + (i===0||i===6 ? 'weekend' : '') + '">' + d + '</div>').join('') + '</div>' +
+      '<div class="cal-grid">' + gridHtml + '</div>' +
+    '</main>' +
+  '</div></div>';
+}
+
+function renderModal() {
+  const editing = ui.editingId ? state.assignments.find(a => a.id === ui.editingId) : null;
+  const data = editing || {
+    course: '',
+    task: '',
+    priority: state.config.priority[0] || 'Medium',
+    date: new Date().toISOString().slice(0,10),
+    status: state.config.status[0] || 'Not Started',
+    notes: ''
+  };
+  const courseOpts = state.config.courses.map(c =>
+    '<option value="' + escapeHtml(c) + '"' + (data.course === c ? ' selected':'') + '>' + escapeHtml(c) + '</option>').join('');
+  const prioOpts = state.config.priority.map(p =>
+    '<option value="' + escapeHtml(p) + '"' + (data.priority === p ? ' selected':'') + '>' + escapeHtml(p) + '</option>').join('');
+  const statusOpts = state.config.status.map(s =>
+    '<option value="' + escapeHtml(s) + '"' + (data.status === s ? ' selected':'') + '>' + escapeHtml(s) + '</option>').join('');
+  return '<div class="modal-overlay" data-act="modal-bg">' +
+    '<div class="modal">' +
+      '<div class="modal-header">' +
+        '<h2>' + (editing ? 'Edit Assignment' : 'Add Assignment') + '</h2>' +
+        '<button class="modal-close" data-act="modal-close">' + icon('x','width="20" height="20"') + '</button>' +
+      '</div>' +
+      '<form class="form" data-act="form-submit">' +
+        '<div><label class="form-label">Assignment Name</label>' +
+          '<input class="form-input" name="task" required autofocus value="' + escapeHtml(data.task) + '" placeholder="Project Title"></div>' +
+        '<div class="form-row">' +
+          '<div><label class="form-label">Course</label>' +
+            '<select class="form-input" name="course"><option value="">Select Course</option>' + courseOpts + '</select></div>' +
+          '<div><label class="form-label">Due Date</label>' +
+            '<input class="form-input" name="date" type="date" value="' + escapeHtml(data.date) + '"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div><label class="form-label">Priority</label>' +
+            '<select class="form-input" name="priority">' + prioOpts + '</select></div>' +
+          '<div><label class="form-label">Status</label>' +
+            '<select class="form-input" name="status">' + statusOpts + '</select></div>' +
+        '</div>' +
+        '<div><label class="form-label">Notes</label>' +
+          '<textarea class="form-input" name="notes" placeholder="Links or details...">' + escapeHtml(data.notes) + '</textarea></div>' +
+        '<div class="form-actions">' +
+          '<button type="button" class="btn-cancel" data-act="modal-close">Cancel</button>' +
+          '<button type="submit" class="btn-save">Save Assignment</button>' +
+        '</div>' +
+      '</form>' +
+    '</div></div>';
+}
+
+function renderMoreModal() {
+  const d = ui.activeMoreDate;
+  const items = state.assignments.filter(a => isSameDay(parseDate(a.date), d));
+  const body = items.map(a =>
+    '<button class="more-event ' + prioClass(a.priority) + '" data-act="edit-from-more" data-id="' + a.id + '">' +
+      '<div class="left">' +
+        '<div class="icon-bubble">' + statusIcon(a.status) + '</div>' +
+        '<div><div class="task">' + escapeHtml(a.task) + '</div>' +
+          '<div class="course">' + escapeHtml(a.course || '') + '</div></div>' +
+      '</div>' +
+      icon('arrow-r','width="16" height="16" style="opacity:.5"') +
+    '</button>').join('');
+  return '<div class="modal-overlay" data-act="more-bg" style="z-index:110">' +
+    '<div class="modal more-modal">' +
+      '<div class="modal-header">' +
+        '<div><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.15em">Assignments Due</div>' +
+          '<div style="font-size:18px;font-weight:700;color:#1e293b">' + fmtDate(d,{month:'long',day:'numeric',year:'numeric'}) + '</div></div>' +
+        '<button class="modal-close" data-act="more-close">' + icon('x','width="20" height="20"') + '</button>' +
+      '</div>' +
+      '<div class="more-body">' + body + '</div>' +
+    '</div></div>';
+}
+
+function bindEvents() {
+  document.querySelectorAll('[data-act]').forEach(el => {
+    const act = el.dataset.act;
+    switch (act) {
+      case 'toggle-nav':
+        el.onclick = () => { state.ui.navExpanded = !state.ui.navExpanded; save(); render(); }; break;
+      case 'tab':
+        el.onclick = () => { state.ui.activeTab = el.dataset.tab; save(); render(); }; break;
+      case 'add':
+        el.onclick = () => { ui.isAdding = true; ui.editingId = null; render(); }; break;
+      case 'edit':
+        el.onclick = (e) => { e.stopPropagation(); ui.editingId = el.dataset.id; ui.isAdding = false; render(); }; break;
+      case 'delete':
+        el.onclick = (e) => {
+          e.stopPropagation();
+          if (confirm('Delete this assignment?')) { deleteAssignment(el.dataset.id); render(); }
+        }; break;
+      case 'modal-close':
+        el.onclick = () => { ui.isAdding = false; ui.editingId = null; render(); }; break;
+      case 'modal-bg':
+        el.onclick = (e) => { if (e.target === el) { ui.isAdding = false; ui.editingId = null; render(); } }; break;
+      case 'form-submit':
+        el.onsubmit = (e) => {
+          e.preventDefault();
+          const f = new FormData(el);
+          const data = Object.fromEntries(f.entries());
+          if (ui.editingId) data.id = ui.editingId;
+          upsertAssignment(data);
+          ui.isAdding = false; ui.editingId = null; render();
+        }; break;
+      case 'search':
+        el.oninput = () => { ui.search = el.value; updateDashCards(); }; break;
+      case 'filter-course':
+        el.onchange = () => { ui.filterCourse = el.value; render(); }; break;
+      case 'filter-status':
+        el.onchange = () => { ui.filterStatus = el.value; render(); }; break;
+      case 'toggle-hide':
+        el.onclick = () => { state.ui.hideCompleted = !state.ui.hideCompleted; save(); render(); }; break;
+      case 'toggle-monday':
+        el.onclick = () => { state.ui.mondayStart = !state.ui.mondayStart; save(); render(); }; break;
+      case 'select-day':
+        el.onclick = () => { ui.selectedDate = new Date(el.dataset.date); render(); }; break;
+      case 'mini-prev':
+        el.onclick = () => { const d = ui.selectedDate; ui.selectedDate = new Date(d.getFullYear(), d.getMonth()-1, 1); render(); }; break;
+      case 'mini-next':
+        el.onclick = () => { const d = ui.selectedDate; ui.selectedDate = new Date(d.getFullYear(), d.getMonth()+1, 1); render(); }; break;
+      case 'cal-prev':
+        el.onclick = () => { const d = ui.viewDate; ui.viewDate = new Date(d.getFullYear(), d.getMonth()-1, 1); render(); }; break;
+      case 'cal-next':
+        el.onclick = () => { const d = ui.viewDate; ui.viewDate = new Date(d.getFullYear(), d.getMonth()+1, 1); render(); }; break;
+      case 'more':
+        el.onclick = (e) => { e.stopPropagation(); ui.activeMoreDate = new Date(el.dataset.date); render(); }; break;
+      case 'more-close':
+        el.onclick = () => { ui.activeMoreDate = null; render(); }; break;
+      case 'more-bg':
+        el.onclick = (e) => { if (e.target === el) { ui.activeMoreDate = null; render(); } }; break;
+      case 'edit-from-more':
+        el.onclick = () => { ui.editingId = el.dataset.id; ui.activeMoreDate = null; render(); }; break;
+      case 'config-new':
+        el.oninput = () => {
+          ui.newConfigValues[el.dataset.key] = el.value;
+          const addBtn = document.querySelector('[data-act="config-add"][data-key="' + el.dataset.key + '"]');
+          if (addBtn) addBtn.disabled = !el.value.trim();
+        };
+        el.onkeydown = (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); addConfig(el.dataset.key, el.value); ui.newConfigValues[el.dataset.key] = ''; render(); }
+        };
+        break;
+      case 'config-add':
+        el.onclick = () => {
+          const key = el.dataset.key;
+          addConfig(key, ui.newConfigValues[key]);
+          ui.newConfigValues[key] = '';
+          render();
+        }; break;
+      case 'config-start-edit':
+        el.onclick = () => {
+          const key = el.dataset.key, idx = +el.dataset.idx;
+          ui.editingConfig = { key: key, idx: idx, value: state.config[key][idx] };
+          render();
+        }; break;
+      case 'config-edit-input':
+        el.oninput = () => { if (ui.editingConfig) ui.editingConfig.value = el.value; };
+        el.onkeydown = (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); commitConfigEdit(); }
+          if (e.key === 'Escape') { ui.editingConfig = null; render(); }
+        };
+        break;
+      case 'config-save':
+        el.onclick = commitConfigEdit; break;
+      case 'config-cancel':
+        el.onclick = () => { ui.editingConfig = null; render(); }; break;
+      case 'config-delete':
+        el.onclick = () => {
+          if (confirm('Delete this entry?')) { deleteConfig(el.dataset.key, +el.dataset.idx); render(); }
+        }; break;
+      case 'export':
+        el.onclick = exportJSON; break;
+      case 'import':
+        el.onchange = () => { if (el.files[0]) importJSON(el.files[0]); }; break;
+      case 'print':
+        el.onclick = () => window.print(); break;
+    }
+  });
+}
+
+function commitConfigEdit() {
+  if (!ui.editingConfig) return;
+  updateConfig(ui.editingConfig.key, ui.editingConfig.idx, ui.editingConfig.value);
+  ui.editingConfig = null;
+  render();
+}
+
+function updateDashCards() {
+  if (state.ui.activeTab !== 'dashboard') return;
+  const container = document.querySelector('.scroll-area');
+  if (!container) return;
+  const filtered = state.assignments
+    .filter(a => {
+      const matchesSearch = (a.task || '').toLowerCase().includes(ui.search.toLowerCase());
+      const matchesCourse = ui.filterCourse === 'All' || a.course === ui.filterCourse;
+      const matchesStatus = ui.filterStatus === 'All' || a.status === ui.filterStatus;
+      const done = (a.status || '').toLowerCase() === 'complete';
+      return matchesSearch && matchesCourse && matchesStatus && (!state.ui.hideCompleted || !done);
+    })
+    .sort((a,b) => ((parseDate(a.date) && parseDate(a.date).getTime()) || Infinity) -
+                   ((parseDate(b.date) && parseDate(b.date).getTime()) || Infinity));
+  container.innerHTML = filtered.length
+    ? '<div class="cards-grid">' + filtered.map(renderCard).join('') + '</div>'
+    : '<div class="empty-state">No assignments match your filters</div>';
+  bindEvents();
+}
+
+render();
+</script>
+</body>
+</html>
