@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduTracker Notifications</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    /* Bell container */
+    .notif-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Bell icon */
+    .bell {
+      font-size: 30px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Red badge */
+    .badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: red;
+      color: white;
+      border-radius: 50%;
+      padding: 3px 7px;
+      font-size: 12px;
+    }
+
+    /* Dropdown box */
+    .dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 40px;
+      width: 280px;
+      max-height: 350px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ddd;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      border-radius: 8px;
+      z-index: 1000;
+    }
+
+    .notif-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .notif-item:last-child {
+      border-bottom: none;
+    }
+
+    .title {
+      font-weight: bold;
+    }
+
+    .time {
+      font-size: 11px;
+      color: gray;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>📘 EduTracker Dashboard</h2>
+
+<!-- 🔔 Notification Bell -->
+<div class="notif-container">
+  <div class="bell" onclick="toggleDropdown()">🔔</div>
+  <span id="badge" class="badge">0</span>
+
+  <div id="dropdown" class="dropdown"></div>
+</div>
+
+<script type="module">
+/* ================= FIREBASE IMPORTS ================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getMessaging, getToken, onMessage } 
+from "https://www.gstatic.com/firebasejs/12.0.0/firebase-messaging.js";
+
+/* ================= FIREBASE CONFIG ================= */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
+
+/* ================= DATA STORE ================= */
+let notifications = [];
+
+/* ================= REQUEST PERMISSION ================= */
+async function initNotifications() {
+  const permission = await Notification.requestPermission();
+
+  if (permission === "granted") {
+    console.log("Notification permission granted");
+
+    const token = await getToken(messaging, {
+      vapidKey: "YOUR_VAPID_KEY"
+    });
+
+    console.log("Device Token:", token);
+  } else {
+    console.log("Permission denied");
+  }
+}
+
+initNotifications();
+
+/* ================= FOREGROUND NOTIFICATIONS ================= */
+onMessage(messaging, (payload) => {
+  console.log("Message received:", payload);
+
+  const data = {
+    title: payload.notification?.title || "No Title",
+    body: payload.notification?.body || "",
+    time: new Date().toLocaleTimeString()
+  };
+
+  notifications.unshift(data);
+  updateUI();
+
+  // browser popup
+  new Notification(data.title, {
+    body: data.body
+  });
+});
+
+/* ================= UPDATE UI ================= */
+function updateUI() {
+  document.getElementById("badge").innerText = notifications.length;
+
+  const dropdown = document.getElementById("dropdown");
+  dropdown.innerHTML = "";
+
+  notifications.forEach(n => {
+    const div = document.createElement("div");
+    div.className = "notif-item";
+
+    div.innerHTML = `
+      <div class="title">${n.title}</div>
+      <div>${n.body}</div>
+      <div class="time">${n.time}</div>
+    `;
+
+    dropdown.appendChild(div);
+  });
+}
+
+/* ================= TOGGLE DROPDOWN ================= */
+window.toggleDropdown = function () {
+  const dd = document.getElementById("dropdown");
+  dd.style.display = dd.style.display === "block" ? "none" : "block";
+};
+
+/* ================= SERVICE WORKER ================= */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("firebase-messaging-sw.js")
+    .then(reg => console.log("Service Worker registered"))
+    .catch(err => console.log("SW error", err));
+}
+</script>
+
+</body>
+</html>
