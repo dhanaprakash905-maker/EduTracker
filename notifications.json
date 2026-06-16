@@ -2,5 +2,10 @@
   {
     "title": "Welcome",
     "message": "Welcome to our website"
+  },
+  {
+    "title": "New Arraival",
+    "message": "Event Planner",
+    "link": "https://docs.google.com/spreadsheets/d/1BM4RAF5n4hY9IhYEWuivZzS3d-EYERpYyTBaxppTI34/edit?gid=109646850#gid=109646850"
   }
 ]
